@@ -1,0 +1,93 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Início — VisaoComputacionalIncremental{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-800">
+    Bem-vindo, {{ user.get_full_name|default:user.username }}
+  </h1>
+  <p class="text-gray-500 text-sm mt-1">Plataforma de criação de detectores de objetos por reuso de modelos</p>
+</div>
+
+<!-- Cards de resumo -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+
+  <div class="bg-white rounded-xl shadow p-6 card-hover">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm text-gray-500">Meus Projetos</p>
+        <p class="text-3xl font-bold text-navy mt-1">{{ total_projetos }}</p>
+      </div>
+      <div class="bg-blue-100 p-3 rounded-full">
+        <i class="bi bi-folder text-navy text-xl"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow p-6 card-hover">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm text-gray-500">Modelos no Registry</p>
+        <p class="text-3xl font-bold text-green-600 mt-1">{{ total_modelos }}</p>
+      </div>
+      <div class="bg-green-100 p-3 rounded-full">
+        <i class="bi bi-cpu text-green-600 text-xl"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow p-6 card-hover">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm text-gray-500">Classes Cadastradas</p>
+        <p class="text-3xl font-bold text-yellow-600 mt-1">{{ total_classes }}</p>
+      </div>
+      <div class="bg-yellow-100 p-3 rounded-full">
+        <i class="bi bi-tags text-yellow-600 text-xl"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow p-6 card-hover">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-sm text-gray-500">Minhas Inferências</p>
+        <p class="text-3xl font-bold text-purple-600 mt-1">{{ total_inferencias }}</p>
+      </div>
+      <div class="bg-purple-100 p-3 rounded-full">
+        <i class="bi bi-image text-purple-600 text-xl"></i>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Ações rápidas -->
+<div class="bg-white rounded-xl shadow p-6">
+  <h2 class="text-lg font-semibold text-gray-800 mb-4">Ações Rápidas</h2>
+  <div class="flex flex-wrap gap-3">
+    <a href="{% url 'admin:app_projeto_add' %}"
+       class="inline-flex items-center px-4 py-2 bg-navy text-white text-sm font-medium rounded-lg hover:bg-navy-light transition">
+      <i class="bi bi-plus-circle mr-2"></i> Novo Projeto
+    </a>
+    <a href="{% url 'admin:app_projeto_changelist' %}"
+       class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
+      <i class="bi bi-list-ul mr-2"></i> Ver Meus Projetos
+    </a>
+    <a href="{% url 'admin:app_modelo_changelist' %}"
+       class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition">
+      <i class="bi bi-cpu mr-2"></i> Model Registry
+    </a>
+  </div>
+</div>
+
+<!-- Info de API -->
+<div class="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+  <i class="bi bi-info-circle mr-1"></i>
+  <strong>API disponível:</strong>
+  <a href="{% url 'schema-swagger-ui' %}" class="underline hover:text-blue-600 ml-1">Swagger</a> ·
+  <a href="{% url 'schema-redoc' %}" class="underline hover:text-blue-600 ml-1">ReDoc</a>
+</div>
+{% endblock %}
