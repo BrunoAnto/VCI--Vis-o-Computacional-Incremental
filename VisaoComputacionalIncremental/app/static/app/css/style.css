@@ -1,0 +1,45 @@
+/* Estilos base do PCI Service Template */
+
+/* Dropdown animation */
+.dropdown-panel {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    transform-origin: top left;
+}
+
+/* Scrollbar customizado */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+    background: #0f2440;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #1a3a5c;
+}
+
+/* Tabelas responsivas */
+.dataTables_wrapper {
+    overflow-x: auto;
+}
+table.dataTable {
+    width: 100% !important;
+}
+
+/* Card hover */
+.card-hover {
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card-hover:hover {
+    box-shadow: 0 4px 20px rgba(15, 36, 64, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Badge de status */
+.badge-ativo   { @apply bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded; }
+.badge-inativo { @apply bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded; }
+.badge-pendente { @apply bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-0.5 rounded; }

@@ -1,0 +1,47 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vci_app
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+      # Chave pública RSA do AuthService
+      - ./app/keys:/app/app/keys:ro
+    depends_on:
+      - db
+    networks:
+      - internal_network
+      - nginx_network
+
+  db:
+    image: postgres:15.3
+    container_name: vci_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vci}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal_network
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+
+networks:
+  # Rede interna: isola app <-> db do restante
+  internal_network:
+    driver: bridge
+
+  # Rede compartilhada com o Nginx gateway (deve existir previamente)
+  nginx_network:
+    external: true
+    name: nginx_default

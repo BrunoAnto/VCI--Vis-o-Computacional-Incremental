@@ -1,0 +1,37 @@
+# Virtual Environment
+.venv
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Django
+db.sqlite3
+*.log
+staticfiles/
+media/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+!.env.example
+
+# Chaves RSA — nunca commitar
+app/keys/*.pem
+*.pem
+*.key
+cert.crt
+
+# OS
+.DS_Store
+Thumbs.db
