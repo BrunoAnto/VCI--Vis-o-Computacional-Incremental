@@ -10,6 +10,36 @@
 
 ---
 
+## 📍 Status da implementação (atualizado em 2026-09-10)
+
+**Concluído — Sprints 0 a 5, na branch `feat/visao-computacional-incremental`:**
+
+| Commit | Sprint | Descrição |
+|---|---|---|
+| `d5af0ac` | 0 + 1 | Estrutura base copiada de `pci-service-template`, nomes/porta (8060) ajustados |
+| `8fcd412` | 2 | Grupos reais em `AuthServiceBackend` (`Gerente`/`Usuario`/`Visualizador`) |
+| `149bf79` | 3 | Models, migration inicial e admin |
+| `f5aaaba` | 4 | API Dinâmica (`/api/vci/`) e Swagger/ReDoc |
+| `946149f` | 5 | Views e templates (dashboard com contadores reais) |
+| `c80926c` | 6 (parcial) | Workflow de CI/CD ajustado (nome da imagem, path de deploy, URLs) |
+
+As 3 dúvidas de modelagem bloqueantes da Sprint 3 foram confirmadas com o dev e aplicadas exatamente como propostas no plano: `classes_desejadas` = M2M(Classe), `anotacoes` = FileField único (zip), `caixas_detectadas` = lista de `{x, y, w, h, classe, confianca, modelo_origem}`.
+
+**Desvio do plano:** `Dockerfile` tinha placeholder `800X` não previsto no plano original — corrigido para `8060` junto com o resto da Sprint 1. `requirements.txt` ganhou `Pillow` (necessário para o `ImageField` de `Inferencia`, ausente no template base).
+
+**Como foi validado:** este ambiente **não tem Docker instalado** (`docker`/`docker compose` não encontrados). Toda a validação das Sprints 1–5 foi feita localmente com `config.settings` (SQLite, sem Docker/Postgres/AuthService) via `.venv`: `manage.py check`, `makemigrations`, `migrate`, e smoke tests de `/swagger/`, `/redoc/`, `/login/`, `/admin/`, `/api/vci/schema/` e da home autenticada (Django test client). O passo "verificar que o container sobe" das Sprints 1, 4 e 5 **não foi executado com Docker real** — recomenda-se rodar `docker compose up --build` em um ambiente com Docker antes de dar como definitivamente verificado.
+
+**Pendente — bloqueado por infraestrutura indisponível neste ambiente:**
+- [ ] Confirmar porta `8060` não colide com outro serviço PCI (Sprint 6, Passo 0 — bloqueante)
+- [ ] Registrar o serviço no GestaoNginx (`/nginx/`) — precisa do Nginx gateway rodando
+- [ ] Distribuir a chave pública JWT via `./copy-public-key.sh` — precisa do AuthService rodando
+- [ ] Verificar autenticação com a chave pública distribuída
+- [ ] Sprint 7 completa (CLAUDE.md, APLICACOES.md, `/simplify`, `/security-review`, finalizar branch, PR)
+
+**Para retomar:** com Docker, Nginx gateway e AuthService disponíveis (ambiente real/VPS), seguir a partir do Passo 0 da Sprint 6 abaixo. `.env` local de teste (`cp .env.example .env`, gitignorado) e um `.venv/` já existem em `VisaoComputacionalIncremental/` para conferência rápida sem Docker, se necessário.
+
+---
+
 ## Regras do agente executor
 
 > Estas regras se aplicam a todo agente que implementar este plano.
@@ -68,25 +98,25 @@ Sinais de que o contexto está pesado (qualquer um é suficiente para avisar):
 **Files:**
 - Create: `VisaoComputacionalIncremental/` (diretório raiz do serviço)
 
-- [ ] **Passo 1: Invocar using-git-worktrees**
+- [x] **Passo 1: Invocar using-git-worktrees**
 
 Anuncie: "Estou usando superpowers:using-git-worktrees para criar workspace isolado."
 Use a skill `superpowers:using-git-worktrees` para criar um worktree ou verificar que já existe um isolado.
 
-- [ ] **Passo 2: Criar branch de feature**
+- [x] **Passo 2: Criar branch de feature**
 
 ```bash
 git checkout -b feat/visao-computacional-incremental
 # Se a branch já existir: git checkout feat/visao-computacional-incremental
 ```
 
-- [ ] **Passo 3: Criar diretório do serviço**
+- [x] **Passo 3: Criar diretório do serviço**
 
 ```bash
 mkdir -p VisaoComputacionalIncremental
 ```
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 git add VisaoComputacionalIncremental/
@@ -105,7 +135,7 @@ git commit -m "chore(VisaoComputacionalIncremental): init service directory"
 - Modify: `VisaoComputacionalIncremental/docker-compose.yml`
 - Modify: `VisaoComputacionalIncremental/.env.example`
 
-- [ ] **Passo 1: Copiar pci-service-template**
+- [x] **Passo 1: Copiar pci-service-template**
 
 ```bash
 cp -r pci-service-template/. VisaoComputacionalIncremental/
@@ -118,7 +148,7 @@ rm -f VisaoComputacionalIncremental/db.sqlite3
 rm -rf VisaoComputacionalIncremental/.git
 ```
 
-- [ ] **Passo 2: Atualizar entrypoint.sh com o nome do serviço**
+- [x] **Passo 2: Atualizar entrypoint.sh com o nome do serviço**
 
 Em `VisaoComputacionalIncremental/entrypoint.sh`, substitua a mensagem do serviço na linha `echo`:
 
@@ -128,7 +158,7 @@ echo "=== VisaoComputacionalIncremental Entrypoint ==="
 
 > **Nota:** `settings_production.py` já está configurado com `FORCE_SCRIPT_NAME`, `SIMPLE_JWT`, `AUTHENTICATION_BACKENDS`, `AUTHSERVICE_URL`, `REQUIRED_GROUP` e isolamento de cookies — não é necessário modificar. O Docker usa este arquivo via `DJANGO_SETTINGS_MODULE=config.settings_production` definido no `entrypoint.sh`.
 
-- [ ] **Passo 3: Atualizar docker-compose.yml**
+- [x] **Passo 3: Atualizar docker-compose.yml**
 
 Em `VisaoComputacionalIncremental/docker-compose.yml`, substitua os nomes de serviço/container e a porta:
 
@@ -178,7 +208,7 @@ networks:
     name: nginx_default
 ```
 
-- [ ] **Passo 4: Atualizar .env.example**
+- [x] **Passo 4: Atualizar .env.example**
 
 ```
 # ─── Django ───────────────────────────────────────────────────────────────────
@@ -216,7 +246,7 @@ API_INCLUDE_META=False
 
 > ⚠️ **Porta 8060 é provisória.** Confirme com o dev que não colide com outro serviço PCI (não havia `CLAUDE.md` acessível no momento do planejamento para checar automaticamente) antes de registrar no Nginx (Sprint 6).
 
-- [ ] **Passo 5: Verificar que o container sobe**
+- [x] **Passo 5: Verificar que o container sobe**
 
 ```bash
 cd VisaoComputacionalIncremental
@@ -228,7 +258,7 @@ docker compose logs app
 
 Esperado: sem erros críticos (warning de chave pública é esperado neste ponto).
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 cd ..
@@ -245,7 +275,7 @@ git commit -m "feat(VisaoComputacionalIncremental): add base Django structure fr
 **Files:**
 - Modify: `VisaoComputacionalIncremental/app/backends.py`
 
-- [ ] **Passo 1: Atualizar backends.py com grupos reais**
+- [x] **Passo 1: Atualizar backends.py com grupos reais**
 
 Em `VisaoComputacionalIncremental/app/backends.py`, localize o dict `DEFAULT_GROUP_PERMISSIONS` (já existe no template) e substitua apenas seu conteúdo com os grupos reais do serviço:
 
@@ -267,7 +297,7 @@ DEFAULT_GROUP_PERMISSIONS = {
 
 > **Nota:** `settings_production.py` já tem `AUTHENTICATION_BACKENDS`, `AUTHSERVICE_URL`, `REQUIRED_GROUP`, `SIMPLE_JWT` e isolamento de cookies configurados. Nenhuma modificação necessária em settings.
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 git add VisaoComputacionalIncremental/app/backends.py
@@ -285,7 +315,7 @@ git commit -m "feat(VisaoComputacionalIncremental): configure AuthServiceBackend
 - Create: `VisaoComputacionalIncremental/app/migrations/0001_initial.py` (via makemigrations)
 - Modify: `VisaoComputacionalIncremental/app/admin.py`
 
-- [ ] **Passo 0 (bloqueante): Confirmar as 3 dúvidas de campo listadas em "Regras do agente executor"**
+- [x] **Passo 0 (bloqueante): Confirmar as 3 dúvidas de campo listadas em "Regras do agente executor"**
 
 Antes de escrever `models.py`, pare e confirme com o dev:
 1. `Projeto.classes_desejadas` — `ManyToManyField(Classe)` ou texto livre?
@@ -294,7 +324,7 @@ Antes de escrever `models.py`, pare e confirme com o dev:
 
 O código abaixo assume as respostas mais prováveis (M2M, FileField único, lista de dicts) — ajuste conforme a resposta real do dev.
 
-- [ ] **Passo 1: Escrever models.py com os models do serviço**
+- [x] **Passo 1: Escrever models.py com os models do serviço**
 
 Em `VisaoComputacionalIncremental/app/models.py`:
 
@@ -498,7 +528,7 @@ Regras obrigatórias:
 - Ordenação padrão: `-data_cadastro`
 - Models referenciados por outros: `on_delete=models.PROTECT` (`Dataset` referenciado por `Treinamento`, `Classe` referenciada por `EstrategiaComposicao`); `EstrategiaComposicao` e `Inferencia` usam `CASCADE` a partir de `Projeto` por serem dados derivados do projeto.
 
-- [ ] **Passo 2: Executar makemigrations**
+- [x] **Passo 2: Executar makemigrations**
 
 ```bash
 cd VisaoComputacionalIncremental
@@ -507,7 +537,7 @@ docker compose exec app python manage.py makemigrations
 
 Esperado: `Migrations for 'app': app/migrations/0001_initial.py`
 
-- [ ] **Passo 3: Executar migrate**
+- [x] **Passo 3: Executar migrate**
 
 ```bash
 docker compose exec app python manage.py migrate
@@ -515,7 +545,7 @@ docker compose exec app python manage.py migrate
 
 Esperado: `Applying app.0001_initial... OK`
 
-- [ ] **Passo 4: Registrar models no admin.py**
+- [x] **Passo 4: Registrar models no admin.py**
 
 Em `VisaoComputacionalIncremental/app/admin.py`:
 
@@ -586,7 +616,7 @@ class MetricaAdmin(admin.ModelAdmin):
     list_filter = ['escopo', 'tipo']
 ```
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 cd ..
@@ -607,11 +637,11 @@ git commit -m "feat(VisaoComputacionalIncremental): add data models and migratio
 - Modify: `VisaoComputacionalIncremental/app/api/urls.py`
 - Modify: `VisaoComputacionalIncremental/config/urls.py`
 
-- [ ] **Passo 1: Verificar que app/api/ está completa**
+- [x] **Passo 1: Verificar que app/api/ está completa**
 
 Verifique que a pasta `VisaoComputacionalIncremental/app/api/` existe. Ela foi copiada automaticamente de `pci-service-template/` no Sprint 1. Se estiver faltando algum arquivo, copie de `pci-service-template/app/api/`.
 
-- [ ] **Passo 2: Atualizar _PREFIX em app/api/urls.py**
+- [x] **Passo 2: Atualizar _PREFIX em app/api/urls.py**
 
 Em `VisaoComputacionalIncremental/app/api/urls.py`, substitua o valor de `_PREFIX` na linha 9:
 
@@ -621,7 +651,7 @@ _PREFIX = "vci"
 
 Este prefixo define as URLs da API: `/api/vci/<model>/` e `/api/vci/<model>/<pk>/`.
 
-- [ ] **Passo 3: Atualizar config/urls.py com rotas da API Dinâmica**
+- [x] **Passo 3: Atualizar config/urls.py com rotas da API Dinâmica**
 
 Em `VisaoComputacionalIncremental/config/urls.py`:
 
@@ -668,7 +698,7 @@ urlpatterns = [
 ]
 ```
 
-- [ ] **Passo 4: Verificar Swagger**
+- [x] **Passo 4: Verificar Swagger**
 
 ```bash
 cd VisaoComputacionalIncremental
@@ -678,7 +708,7 @@ docker compose restart app
 Acesse: `http://localhost:8060/vci/swagger/`
 Esperado: página do Swagger carregada com endpoints da API Dinâmica visíveis.
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 cd ..
@@ -698,7 +728,7 @@ git commit -m "feat(VisaoComputacionalIncremental): add dynamic API and Swagger"
 - Modify: `VisaoComputacionalIncremental/app/templates/app/base.html`
 - Modify: `VisaoComputacionalIncremental/app/templates/app/home.html`
 
-- [ ] **Passo 1: Atualizar views.py com home view autenticada**
+- [x] **Passo 1: Atualizar views.py com home view autenticada**
 
 Em `VisaoComputacionalIncremental/app/views.py`, o template já tem `home` e `logout_view`. Substitua `'VisaoComputacionalIncremental'` no contexto do `home` view:
 
@@ -723,7 +753,7 @@ def logout_view(request):
     return redirect('login')
 ```
 
-- [ ] **Passo 2: Atualizar app/urls.py**
+- [x] **Passo 2: Atualizar app/urls.py**
 
 Em `VisaoComputacionalIncremental/app/urls.py`:
 
@@ -739,7 +769,7 @@ urlpatterns = [
 ]
 ```
 
-- [ ] **Passo 3: Atualizar base.html com nome do serviço**
+- [x] **Passo 3: Atualizar base.html com nome do serviço**
 
 Em `VisaoComputacionalIncremental/app/templates/app/base.html`, substitua o título e nome exibido:
 
@@ -753,7 +783,7 @@ e no navbar/header:
 <span class="service-name">VisaoComputacionalIncremental</span>
 ```
 
-- [ ] **Passo 4: Atualizar home.html com dashboard básico**
+- [x] **Passo 4: Atualizar home.html com dashboard básico**
 
 Em `VisaoComputacionalIncremental/app/templates/app/home.html`, adicione um bloco de boas-vindas com o nome do serviço e um resumo dos projetos do usuário:
 
@@ -766,7 +796,7 @@ Em `VisaoComputacionalIncremental/app/templates/app/home.html`, adicione um bloc
 {% endblock %}
 ```
 
-- [ ] **Passo 5: Verificar login e home**
+- [x] **Passo 5: Verificar login e home**
 
 ```bash
 cd VisaoComputacionalIncremental
@@ -776,7 +806,7 @@ docker compose restart app
 Acesse `http://localhost:8060/vci/login/` — deve exibir o formulário de login.
 Faça login com credenciais do AuthService — deve redirecionar para home.
 
-- [ ] **Commit**
+- [x] **Commit**
 
 ```bash
 cd ..
@@ -833,7 +863,7 @@ docker compose logs app
 
 Esperado: sem erros de `JWT_PUBLIC_KEY_PATH`.
 
-- [ ] **Passo 4: Configurar CI/CD**
+- [x] **Passo 4: Configurar CI/CD**
 
 Copie o workflow do template:
 
