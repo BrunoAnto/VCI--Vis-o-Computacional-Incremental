@@ -9,8 +9,6 @@ from .models import Classe, Inferencia, Modelo, Projeto
 @login_required
 def home(request):
     context = {
-        'user': request.user,
-        'service_name': 'VisaoComputacionalIncremental',
         'total_projetos': Projeto.objects.filter(usuario=request.user).count(),
         'total_modelos': Modelo.objects.count(),
         'total_classes': Classe.objects.count(),

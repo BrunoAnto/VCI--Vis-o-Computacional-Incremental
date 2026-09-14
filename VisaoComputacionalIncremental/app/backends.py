@@ -1,6 +1,8 @@
 import logging
+import jwt as pyjwt
 import requests
 from django.contrib.auth import get_user_model
+from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import Group, Permission
 from django.conf import settings
 
@@ -9,6 +11,9 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 _APP_LABEL = 'app'
+
+# Sessão HTTP reaproveitada entre chamadas ao AuthService (pool de conexões/keep-alive).
+_session = requests.Session()
 
 # =============================================================================
 # Mapeamento de permissões por grupo
@@ -74,7 +79,7 @@ def _aplicar_permissoes_grupo(group, group_name):
     )
 
 
-class AuthServiceBackend:
+class AuthServiceBackend(ModelBackend):
     """
     Autentica o usuário delegando ao AuthService centralizado.
 
@@ -85,6 +90,10 @@ class AuthServiceBackend:
     4. Cria/atualiza o User local; define set_unusable_password()
     5. Sincroniza grupos Django locais, aplicando DEFAULT_GROUP_PERMISSIONS
        na primeira criação de cada grupo
+
+    Herda de ModelBackend só para reaproveitar get_user()/has_perm()/
+    get_all_permissions() (permissões locais via grupos sincronizados) —
+    authenticate() é totalmente reimplementado abaixo.
     """
 
     def authenticate(self, request, username=None, password=None, **kwargs):
@@ -97,7 +106,7 @@ class AuthServiceBackend:
             return None
 
         try:
-            response = requests.post(
+            response = _session.post(
                 f"{authservice_url}/api/token/",
                 json={"username": username, "password": password},
                 headers={"Host": "localhost"},
@@ -125,7 +134,6 @@ class AuthServiceBackend:
             return None
 
         try:
-            import jwt as pyjwt
             payload = pyjwt.decode(
                 access_token,
                 options={"verify_signature": False},
@@ -172,18 +180,14 @@ class AuthServiceBackend:
         if changed or created:
             user.save()
 
-        local_groups = []
+        existentes = {g.name: g for g in Group.objects.filter(name__in=groups)}
         for group_name in groups:
+            if group_name in existentes:
+                continue
             group, grp_created = Group.objects.get_or_create(name=group_name)
             if grp_created:
                 _aplicar_permissoes_grupo(group, group_name)
-            local_groups.append(group)
-        user.groups.set(local_groups)
+            existentes[group_name] = group
+        user.groups.set(existentes.values())
 
         return user
-
-    def get_user(self, user_id):
-        try:
-            return User.objects.get(pk=user_id)
-        except User.DoesNotExist:
-            return None
