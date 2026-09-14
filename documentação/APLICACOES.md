@@ -783,6 +783,23 @@ Rotas disponíveis em **/`** e também em **`/academico/`** (mesmos endpoints).
 - PATCH `/api/treinamentos/<pk>/`
 - DELETE `/api/treinamentos/<pk>/`
 
+## VisaoComputacionalIncremental
+- GET `/admin/`
+- GET `/api/vci/schema/`
+- GET `/api/vci/me/`
+- GET `/api/vci/<model>/`
+- POST `/api/vci/<model>/`
+- GET `/api/vci/<model>/<pk>/`
+- PUT `/api/vci/<model>/<pk>/`
+- PATCH `/api/vci/<model>/<pk>/`
+- DELETE `/api/vci/<model>/<pk>/`
+- GET `/swagger/`
+- GET `/redoc/`
+- GET `/swagger.json`
+- GET `/login/`
+- GET `/logout/`
+- GET `/`
+
 ## Zen
 - GET `/admin/`
 - GET `/`
