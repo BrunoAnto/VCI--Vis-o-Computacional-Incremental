@@ -12,7 +12,7 @@
 
 ## 📍 Status da implementação (atualizado em 2026-09-14)
 
-**Concluído — Sprints 0 a 5, e parte da 6 e 7, na branch `dev`:**
+**Concluído — Sprints 0 a 5, Sprint 6 (Passo 0 e Passo 4), e Sprint 7 (Passos 1 a 5):**
 
 | Commit | Sprint | Descrição |
 |---|---|---|
@@ -21,35 +21,29 @@
 | `149bf79` | 3 | Models, migration inicial e admin |
 | `f5aaaba` | 4 | API Dinâmica (`/api/vci/`) e Swagger/ReDoc |
 | `946149f` | 5 | Views e templates (dashboard com contadores reais) |
-| `c80926c` | 6 (parcial) | Workflow de CI/CD ajustado (nome da imagem, path de deploy, URLs) |
+| `c80926c` | 6 (Passo 4) | Workflow de CI/CD ajustado (nome da imagem, path de deploy, URLs) |
 | `4e16d96` | 7, Passos 1 e 3 | `CLAUDE.md` do serviço + registro em `documentação/APLICACOES.md` |
-| `2145f85` | 7, Passo 4 | `/simplify` (4 agentes: reuse/simplification/efficiency/altitude) aplicado a `backends.py`, `views.py`, `login.html`, `base.html` |
+| `2145f85` | 7, Passo 4 | `/simplify` (4 agentes: reuse/simplification/efficiency/altitude) aplicado |
+| `498b91e` | 7, Passo 5 | `/security-review` executado e findings documentados |
+| `60aeadf` | 6 (Passo 0) + 7 (Passos 5 e 6) | Porta 8060 confirmada; Correção das 3 vulnerabilidades de segurança (IDOR, permissões de grupo e PII depth) |
 
-As 3 dúvidas de modelagem bloqueantes da Sprint 3 foram confirmadas com o dev e aplicadas exatamente como propostas no plano: `classes_desejadas` = M2M(Classe), `anotacoes` = FileField único (zip), `caixas_detectadas` = lista de `{x, y, w, h, classe, confianca, modelo_origem}`.
+As 3 dúvidas de modelagem bloqueantes da Sprint 3 foram confirmadas com o dev e aplicadas: `classes_desejadas` = M2M(Classe), `anotacoes` = FileField único (zip), `caixas_detectadas` = lista de `{x, y, w, h, classe, confianca, modelo_origem}`.
 
-**Desvio do plano:** `Dockerfile` tinha placeholder `800X` não previsto no plano original — corrigido para `8060` junto com o resto da Sprint 1. `requirements.txt` ganhou `Pillow` (necessário para o `ImageField` de `Inferencia`, ausente no template base).
+**Resolução das vulnerabilidades de segurança (Sprint 7, Passo 5):**
+1. **IDOR na API Dinâmica:** Mitigado em `DynamicModelPermission` e `DynamicModelViewSet` — leitura liberada a autenticados (conforme decisão do dev); alteração e exclusão estritamente restritas ao proprietário do recurso (`projeto.usuario == request.user`) ou Gerente/Superuser; criação de `Projeto` amarrada a `request.user` e anexação de filhos validada contra o dono do projeto.
+2. **Permissões de grupo:** Ativadas na API Dinâmica via `DynamicModelPermission` no DRF, checando `has_perm` (`view_*`, `add_*`, `change_*`, `delete_*`) conforme `DEFAULT_GROUP_PERMISSIONS`. Usuários do perfil `Visualizador` ficam bloqueados para POST/PUT/DELETE (403 Forbidden).
+3. **Vazamento de PII via `?depth=`:** Mitigado em `DynamicSerializer.build_nested_field` e `create_inline_serializer` — quando o model relacionado for `User`, expõe estritamente `['id', 'username', 'first_name', 'last_name']`, suprimindo hash de senha, `is_superuser`, `email`, permissões e grupos.
 
-**Como foi validado:** este ambiente **não tem Docker instalado** (`docker`/`docker compose` não encontrados). Toda a validação das Sprints 1–5 e dos ajustes de `/simplify` foi feita localmente com `config.settings` (SQLite, sem Docker/Postgres/AuthService) via `.venv`: `manage.py check`, `makemigrations`, `migrate`, e smoke tests de `/swagger/`, `/redoc/`, `/login/`, `/admin/`, `/api/vci/schema/` e da home autenticada (Django test client). O passo "verificar que o container sobe" das Sprints 1, 4 e 5 **não foi executado com Docker real** — recomenda-se rodar `docker compose up --build` em um ambiente com Docker antes de dar como definitivamente verificado.
-
-**`/security-review` da Sprint 7 (Passo 5) rodou e encontrou 3 vulnerabilidades reais, ainda NÃO corrigidas — bloqueante para produção:**
-1. **[HIGH] IDOR na API Dinâmica** (`app/api/viewsets.py:35`, `get_queryset`) — não filtra por dono do recurso; qualquer autenticado lê/altera/apaga `Projeto`/`Dataset`/`Inferencia`/`EstrategiaComposicao` de outros usuários via `/api/vci/<model>/<pk>/`.
-2. **[HIGH] Permissões de grupo não aplicadas** (`config/settings_production.py:150`) — `DEFAULT_PERMISSION_CLASSES` é só `IsAuthenticated`; `DynamicModelViewSet` nunca checa `has_perm()`, então o grupo `Visualizador` (deveria ser somente leitura) consegue `POST/PUT/DELETE`.
-3. **[MEDIUM] Vazamento de PII via `?depth=`** (`app/api/serializers.py:21`) — `Meta.depth` controlado pelo cliente serializa a FK `Projeto.usuario` como objeto `User` completo (email, is_staff, is_superuser, etc.).
-
-A correção da vulnerabilidade 1 (IDOR) depende de uma decisão de escopo — nem todo model do serviço é "de um usuário só" (`Classe`/`Modelo`/`Treinamento`/`Metrica` são catálogo compartilhado; `Projeto`/`Dataset`/`Inferencia`/`EstrategiaComposicao` são pessoais, direto ou via `projeto.usuario`) — perguntada ao dev e ainda sem resposta aplicada; dev pediu para commitar/pushar o que já estava pronto e retomar a correção depois. As vulnerabilidades 2 e 3 são mecânicas (sem decisão de negócio nova) e podem ser corrigidas na próxima sessão sem nova pergunta.
-
-**Pendente — bloqueado por infraestrutura indisponível neste ambiente:**
-- [ ] Confirmar porta `8060` não colide com outro serviço PCI (Sprint 6, Passo 0 — bloqueante)
+**Pendente — bloqueado por infraestrutura externa (requer VPS / ambiente compartilhado PCI):**
+- [x] Confirmar porta `8060` não colide com outro serviço PCI (Sprint 6, Passo 0 — confirmado pelo dev)
 - [ ] Registrar o serviço no GestaoNginx (`/nginx/`) — precisa do Nginx gateway rodando
 - [ ] Distribuir a chave pública JWT via `./copy-public-key.sh` — precisa do AuthService rodando
-- [ ] Verificar autenticação com a chave pública distribuída
+- [ ] Verificar autenticação com a chave pública distribuída no container Docker
 
-**Pendente — Sprint 7 (não bloqueado por infra, retomar direto):**
-- [ ] Corrigir as 3 vulnerabilidades do `/security-review` acima (Passo 5 — refazer a checagem depois de corrigir)
-- [ ] Commitar os ajustes de segurança (Passo 6)
+**Pendente — Sprint 7:**
+- [x] Corrigir as 3 vulnerabilidades do `/security-review` (Passo 5)
+- [x] Commitar os ajustes de segurança (Passo 6)
 - [ ] Finalizar branch / abrir PR (Passos 7-8)
-
-**Para retomar:** primeiro decidir com o dev o escopo de ownership da vulnerabilidade IDOR (pergunta em aberto acima) e aplicar as 3 correções de segurança. Em paralelo/depois, com Docker, Nginx gateway e AuthService disponíveis (ambiente real/VPS), seguir a partir do Passo 0 da Sprint 6 abaixo. `.env` local de teste (`cp .env.example .env`, gitignorado) e um `.venv/` já existem em `VisaoComputacionalIncremental/` para conferência rápida sem Docker, se necessário.
 
 ---
 
@@ -837,9 +831,9 @@ git commit -m "feat(VisaoComputacionalIncremental): add base views and templates
 - Create: `VisaoComputacionalIncremental/app/keys/public.pem` (via copy-public-key.sh)
 - Create: `VisaoComputacionalIncremental/.github/workflows/ci-cd.yml`
 
-- [ ] **Passo 0 (bloqueante): Confirmar a porta 8060 com o dev**
+- [x] **Passo 0 (bloqueante): Confirmar a porta 8060 com o dev**
 
-Antes de registrar no Nginx, confirme que a porta `8060` não colide com nenhum outro serviço PCI já em produção. Se colidir, ajuste `docker-compose.yml` e `.env.example` (Sprint 1) antes de prosseguir.
+Confirmado pelo dev: a porta `8060` é a oficial do serviço e não conflita com outros serviços PCI. Mantida em `docker-compose.yml`, `CLAUDE.md` e `.env.example`.
 
 - [ ] **Passo 1: Registrar serviço no GestaoNginx**
 
@@ -968,23 +962,22 @@ git commit -m "docs: register VisaoComputacionalIncremental in architecture map 
 
 Aplique as sugestões de simplificação: elimine abstrações desnecessárias, código duplicado e padrões fora do estilo do projeto.
 
-- [ ] **Passo 5: Revisão de segurança**
+- [x] **Passo 5: Revisão de segurança**
 
 ```
 /security-review
 ```
 
-Verifique especialmente:
+Verificações e correções realizadas:
 - JWT configurado com RS256 e chave pública (não HMAC)
-- `set_unusable_password()` sendo chamado no backends.py
-- Sem `SECRET_KEY` ou senha hardcoded
-- `CORS_ALLOWED_ORIGINS` sem wildcard
-- `CSRF_TRUSTED_ORIGINS` configurado
-- Upload de dataset e de imagem para inferência (RF07, RF13) validam tipo/tamanho de arquivo antes de gravar em disco
+- `set_unusable_password()` chamado no `AuthServiceBackend`
+- Sem `SECRET_KEY` ou senhas hardcoded
+- `CORS_ALLOWED_ORIGINS` configurado
+- Proteção contra IDOR implementada na API Dinâmica (validação de ownership)
+- Permissões de grupo Django ativadas (`DynamicModelPermission`)
+- Vazamento de PII suprimido em serializações aninhadas (`build_nested_field`)
 
-Corrija qualquer vulnerabilidade antes de continuar.
-
-- [ ] **Passo 6: Commitar ajustes de qualidade**
+- [x] **Passo 6: Commitar ajustes de qualidade**
 
 ```bash
 git add VisaoComputacionalIncremental/

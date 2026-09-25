@@ -1,12 +1,14 @@
 from django.db.models import Count
 from django.core.exceptions import ObjectDoesNotExist, FieldError
+from django.http import Http404
 from rest_framework import viewsets, response, status
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from django.conf import settings
 import logging
 
 from app.api.serializers import DynamicSerializer
+from app.api.permissions import DynamicModelPermission
 from app.api.exceptions import (
     ModelNotFoundError, InvalidRelationshipError,
     RelatedObjectNotFoundError, OperationError,
@@ -19,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class DynamicModelViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
+    permission_classes = [DynamicModelPermission]
 
     def get_model(self):
         model_name = self.kwargs.get("model")
@@ -107,6 +110,8 @@ class DynamicModelViewSet(viewsets.ModelViewSet):
     def get_object(self):
         try:
             return super().get_object()
+        except (PermissionDenied, Http404):
+            raise
         except Exception:
             model_name = self.kwargs.get("model", "")
             pk = self.kwargs.get("pk", "")
@@ -141,6 +146,22 @@ class DynamicModelViewSet(viewsets.ModelViewSet):
         data = request.data.copy()
         model = self.get_model()
         try:
+            # Proteção IDOR: vinculação e validação de propriedade
+            is_admin = request.user.is_superuser or request.user.groups.filter(name='VisaoComputacionalIncremental_Gerente').exists()
+            if model._meta.model_name == 'projeto':
+                if not is_admin or 'usuario' not in data:
+                    data['usuario'] = request.user.pk
+            elif any(f.name == 'projeto' and f.is_relation for f in model._meta.fields):
+                projeto_id = data.get('projeto')
+                if projeto_id and not is_admin:
+                    from app.models import Projeto
+                    try:
+                        proj = Projeto.objects.get(pk=projeto_id)
+                        if proj.usuario != request.user:
+                            raise PermissionDenied("Você não tem permissão para associar recursos a projetos de outros usuários.")
+                    except Projeto.DoesNotExist:
+                        pass
+
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
 
@@ -180,7 +201,7 @@ class DynamicModelViewSet(viewsets.ModelViewSet):
                             raise NestedObjectError(relation_field=field_name, index=index, message=str(e))
 
             return response.Response(self.get_serializer(instance).data, status=status.HTTP_201_CREATED)
-        except (ValidationError, InvalidRelationshipError, NestedObjectError):
+        except (PermissionDenied, ValidationError, InvalidRelationshipError, NestedObjectError):
             raise
         except Exception as e:
             logger.error(f"Erro ao criar objeto: {str(e)}")
@@ -191,12 +212,30 @@ class DynamicModelViewSet(viewsets.ModelViewSet):
             instance = self.get_object()
             data = request.data.copy()
 
+            # Proteção IDOR: não permite alterar proprietário nem mover recurso para projeto de outro
+            is_admin = request.user.is_superuser or request.user.groups.filter(name='VisaoComputacionalIncremental_Gerente').exists()
+            model = instance.__class__
+            if model._meta.model_name == 'projeto':
+                if not is_admin or 'usuario' not in data:
+                    data['usuario'] = instance.usuario.pk
+            elif any(f.name == 'projeto' and f.is_relation for f in model._meta.fields):
+                projeto_id = data.get('projeto')
+                if projeto_id and not is_admin:
+                    from app.models import Projeto
+                    try:
+                        proj = Projeto.objects.get(pk=projeto_id)
+                        if proj.usuario != request.user:
+                            raise PermissionDenied("Você não tem permissão para mover recursos para projetos de outros usuários.")
+                    except Projeto.DoesNotExist:
+                        pass
+
             related_fields = {}
             for field_name, value in list(data.items()):
                 if field_name.endswith('_set') and isinstance(value, list):
                     related_fields[field_name] = data.pop(field_name)
 
-            serializer = self.get_serializer(instance, data=data)
+            partial = kwargs.pop('partial', False)
+            serializer = self.get_serializer(instance, data=data, partial=partial)
             serializer.is_valid(raise_exception=True)
             serializer.save()
 
@@ -226,7 +265,7 @@ class DynamicModelViewSet(viewsets.ModelViewSet):
                         raise NestedObjectError(relation_field=field_name, index=index, message=str(e))
 
             return response.Response(self.get_serializer(instance).data, status=status.HTTP_200_OK)
-        except (ValidationError, InvalidRelationshipError, NestedObjectError, RelatedObjectNotFoundError):
+        except (PermissionDenied, ValidationError, InvalidRelationshipError, NestedObjectError, RelatedObjectNotFoundError):
             raise
         except Exception as e:
             logger.error(f"Erro ao atualizar objeto: {str(e)}")
@@ -241,7 +280,7 @@ class DynamicModelViewSet(viewsets.ModelViewSet):
             instance = self.get_object()
             self.perform_destroy(instance)
             return response.Response(status=status.HTTP_204_NO_CONTENT)
-        except (InvalidRelationshipError, RelatedObjectNotFoundError):
+        except (PermissionDenied, InvalidRelationshipError, RelatedObjectNotFoundError):
             raise
         except Exception as e:
             logger.error(f"Erro ao excluir objeto: {str(e)}")

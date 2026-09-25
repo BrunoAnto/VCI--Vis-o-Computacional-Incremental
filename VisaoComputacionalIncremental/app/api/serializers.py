@@ -30,6 +30,19 @@ class DynamicSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         self._add_field_validations()
 
+    def build_nested_field(self, field_name, relation_info, nested_depth):
+        from django.contrib.auth import get_user_model
+        UserModel = get_user_model()
+        if relation_info.related_model == UserModel:
+            class SafeUserSerializer(serializers.ModelSerializer):
+                class Meta:
+                    model = UserModel
+                    fields = ['id', 'username', 'first_name', 'last_name']
+                    read_only_fields = fields
+
+            return SafeUserSerializer, {'read_only': True}
+        return super().build_nested_field(field_name, relation_info, nested_depth)
+
     def _add_field_validations(self):
         model = self.Meta.model
         for field_name, field in self.fields.items():
@@ -45,8 +58,14 @@ class DynamicSerializer(serializers.ModelSerializer):
     @classmethod
     def create_inline_serializer(cls, related_model_name, app_label=None, depthParam=0, fields=None):
         try:
+            from django.contrib.auth import get_user_model
+            UserModel = get_user_model()
             related_model = get_model_from_names(app_label, related_model_name)
-            model_fields = fields if fields is not None else "__all__"
+
+            if related_model == UserModel:
+                model_fields = ['id', 'username', 'first_name', 'last_name']
+            else:
+                model_fields = fields if fields is not None else "__all__"
 
             class InlineSerializer(serializers.ModelSerializer):
                 class Meta:
